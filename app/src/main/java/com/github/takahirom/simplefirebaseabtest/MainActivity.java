@@ -9,16 +9,21 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.github.takahirom.fireannotation.annotation.FireEventLog;
+import com.github.takahirom.fireannotation.annotation.FireUserProperty;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 
+import static com.google.firebase.analytics.FirebaseAnalytics.Event.SELECT_CONTENT;
+import static com.google.firebase.analytics.FirebaseAnalytics.Event.VIEW_ITEM;
+import static com.google.firebase.analytics.FirebaseAnalytics.Param.CONTENT_TYPE;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String REMOTE_CONFIG_BUTTON_COLOR_KEY = "button_color";
-    public static final String ANALYTICS_USER_PROPERTY_BUTTON_COLOR_KEY = "button_color";
 
     private FirebaseRemoteConfig firebaseRemoteConfig;
     private FirebaseAnalytics firebaseAnalytics;
@@ -38,29 +43,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // ボタンを見たという情報をFirebase Analyticsに送信
+    @FireEventLog(event = VIEW_ITEM, parameter = CONTENT_TYPE + ":" + "button")
     @Override
     protected void onResume() {
         super.onResume();
-
-        // ボタンを見たという情報をFirebase Analyticsに送信
-        final Bundle bundle = new Bundle();
-        bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "button");
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM, bundle);
     }
 
     private void initViews() {
         helloButton = (Button) findViewById(R.id.hello_button);
         helloButton.setOnClickListener(new View.OnClickListener() {
+            // クリックしたらFirebase Analyticsに送信
+            // ここではパラメーターとして色は送らず、UserPropertyとして送る
+            @FireEventLog(event = SELECT_CONTENT, parameter = CONTENT_TYPE + ":" + "button")
             @Override
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, "Button tapped", Toast.LENGTH_SHORT).show();
-
-                // クリックしたらFirebase Analyticsに送信
-                // ここではパラメーターとして色は送らず、UserPropertyとして送る
-                final Bundle parameter = new Bundle();
-                parameter.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "button");
-                firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, parameter);
-
             }
         });
 
@@ -69,13 +67,11 @@ public class MainActivity extends AppCompatActivity {
         applyButtonColor();
     }
 
+    // FirebaseのUserPropertyで色を送信する
+    @FireUserProperty(customProperty = CustomUserPropertyCreator.class)
     private void applyButtonColor() {
         final String color = getButtonColor();
         helloButton.setBackgroundColor(Color.parseColor(color));
-
-        // FirebaseのUserPropertyで色を送信する
-        final String colorForUserProperty = color.replace("#", "");
-        firebaseAnalytics.setUserProperty(ANALYTICS_USER_PROPERTY_BUTTON_COLOR_KEY, colorForUserProperty);
     }
 
     private void initRemoteConfig() {
@@ -107,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private String getButtonColor() {
+    String getButtonColor() {
         // RemoteConfigから色の文字列を取得する
         return firebaseRemoteConfig.getString(REMOTE_CONFIG_BUTTON_COLOR_KEY);
     }
